@@ -260,6 +260,19 @@
   }
   .entree .supprimer:hover { color: var(--rouge); }
 
+  .entree .modifier {
+    position: absolute;
+    top: 10px;
+    right: 38px;
+    background: none;
+    border: none;
+    color: var(--gris-texte);
+    font-size: 16px;
+    padding: 2px 6px;
+    line-height: 1;
+  }
+  .entree .modifier:hover { color: var(--rouge); }
+
   .vide {
     text-align: center;
     padding: 30px 10px;
@@ -378,215 +391,4 @@
     </div>
 
     <!-- Etape 3 : Description -->
-    <div class="etape" data-etape="3">
-      <div class="num">Étape 3 / 4</div>
-      <h2>Descriptif</h2>
-      <p class="aide">Ajoutez un bref descriptif de la situation ou des mesures prises.</p>
-      <label for="champDesc">Description</label>
-      <textarea id="champDesc" placeholder="Décrivez brièvement l'intervention..."></textarea>
-      <div class="actions">
-        <button class="btn-retour" onclick="allerEtape(2)">Retour</button>
-        <button class="btn-suivant" onclick="allerEtape(4)">Suivant</button>
-      </div>
-    </div>
-
-    <!-- Etape 4 : Récapitulatif -->
-    <div class="etape" data-etape="4">
-      <div class="num">Étape 4 / 4</div>
-      <h2>Récapitulatif</h2>
-      <p class="aide">Vérifiez les éléments avant d'ajouter cette entrée à votre liste du jour.</p>
-      <div id="zoneRecap"></div>
-      <div class="actions">
-        <button class="btn-retour" onclick="allerEtape(3)">Retour</button>
-        <button class="btn-ajouter" onclick="ajouterEntree()">Ajouter à la liste</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- LISTE DU JOUR -->
-  <section class="liste-jour">
-    <h2>Entrées enregistrées</h2>
-    <div id="listeEntrees"></div>
-
-    <div class="barre-finale">
-      <button class="btn-envoyer" id="btnEnvoyer" onclick="envoyerRecapitulatif()" disabled>Envoyer le récapitulatif par mail</button>
-      <button class="btn-vider" onclick="viderListe()">Vider</button>
-    </div>
-    <div class="confirmation" id="confirmation">
-      Le client mail s'est ouvert avec le récapitulatif. Une fois l'email envoyé, vous pouvez vider la liste.
-    </div>
-  </section>
-
-</main>
-
-<footer>
-  Les données restent stockées localement dans ce navigateur jusqu'à l'envoi.
-</footer>
-
-<script>
-  // ---------- Configuration ----------
-  const EMAIL_DESTINATAIRE = "securite.publique@lemontsurlausanne.ch";
-  const CLE_STOCKAGE = "pola_registre_jour";
-
-  // ---------- Navigation entre étapes ----------
-  function allerEtape(n) {
-    document.querySelectorAll(".etape").forEach(e => e.classList.remove("visible"));
-    document.querySelector(`.etape[data-etape="${n}"]`).classList.add("visible");
-
-    document.querySelectorAll(".segment").forEach(seg => {
-      const num = parseInt(seg.dataset.seg, 10);
-      seg.classList.toggle("fait", num < n);
-      seg.classList.toggle("actif", num === n);
-    });
-
-    if (n === 4) construireRecap();
-  }
-
-  function construireRecap() {
-    const info = document.getElementById("champInfo").value.trim() || "—";
-    const date = document.getElementById("champDate").value || "—";
-    const heure = document.getElementById("champHeure").value || "—";
-    const heureFin = document.getElementById("champHeureFin").value || "—";
-    const desc = document.getElementById("champDesc").value.trim() || "—";
-
-    document.getElementById("zoneRecap").innerHTML = `
-      <div class="recap-champ"><span class="clef">Information</span><span class="valeur">${echapper(info)}</span></div>
-      <div class="recap-champ"><span class="clef">Date</span><span class="valeur">${formaterDate(date)}</span></div>
-      <div class="recap-champ"><span class="clef">Heure de début</span><span class="valeur">${echapper(heure)}</span></div>
-      <div class="recap-champ"><span class="clef">Heure de fin</span><span class="valeur">${echapper(heureFin)}</span></div>
-      <div class="recap-champ"><span class="clef">Description</span><span class="valeur">${echapper(desc)}</span></div>
-    `;
-  }
-
-  // ---------- Stockage local ----------
-  function chargerEntrees() {
-    try {
-      return JSON.parse(localStorage.getItem(CLE_STOCKAGE)) || [];
-    } catch {
-      return [];
-    }
-  }
-
-  function sauvegarderEntrees(liste) {
-    localStorage.setItem(CLE_STOCKAGE, JSON.stringify(liste));
-  }
-
-  function ajouterEntree() {
-    const info = document.getElementById("champInfo").value.trim();
-    const date = document.getElementById("champDate").value;
-    const heure = document.getElementById("champHeure").value;
-    const heureFin = document.getElementById("champHeureFin").value;
-    const desc = document.getElementById("champDesc").value.trim();
-
-    if (!info) {
-      alert("Merci d'indiquer au moins l'information (objet / motif).");
-      allerEtape(1);
-      return;
-    }
-
-    const liste = chargerEntrees();
-    liste.push({ info, date, heure, heureFin, desc, horodatage: new Date().toISOString() });
-    sauvegarderEntrees(liste);
-
-    // Réinitialiser le formulaire pour une nouvelle saisie
-    document.getElementById("champInfo").value = "";
-    document.getElementById("champDate").value = "";
-    document.getElementById("champHeure").value = "";
-    document.getElementById("champHeureFin").value = "";
-    document.getElementById("champDesc").value = "";
-    allerEtape(1);
-
-    afficherListe();
-  }
-
-  function supprimerEntree(index) {
-    const liste = chargerEntrees();
-    liste.splice(index, 1);
-    sauvegarderEntrees(liste);
-    afficherListe();
-  }
-
-  function viderListe() {
-    if (chargerEntrees().length === 0) return;
-    if (confirm("Vider toutes les entrées enregistrées aujourd'hui ? Cette action est irréversible.")) {
-      localStorage.removeItem(CLE_STOCKAGE);
-      afficherListe();
-      document.getElementById("confirmation").classList.remove("visible");
-    }
-  }
-
-  function afficherListe() {
-    const liste = chargerEntrees();
-    const conteneur = document.getElementById("listeEntrees");
-    const compteur = document.getElementById("compteurJour");
-    const btnEnvoyer = document.getElementById("btnEnvoyer");
-
-    compteur.textContent = liste.length;
-    btnEnvoyer.disabled = liste.length === 0;
-
-    if (liste.length === 0) {
-      conteneur.innerHTML = `<div class="vide">Aucune entrée pour le moment. Remplissez le formulaire ci-dessus pour commencer.</div>`;
-      return;
-    }
-
-    conteneur.innerHTML = liste.map((e, i) => `
-      <div class="entree">
-        <button class="supprimer" onclick="supprimerEntree(${i})" title="Supprimer">✕</button>
-        <div class="en-tete">
-          <span class="titre-entree">${echapper(e.info)}</span>
-          <span class="creneau">${formaterDate(e.date)} ${e.heure ? "· " + echapper(e.heure) : ""}${e.heureFin ? " – " + echapper(e.heureFin) : ""}</span>
-        </div>
-        <div class="desc">${echapper(e.desc) || "—"}</div>
-      </div>
-    `).join("");
-  }
-
-  // ---------- Envoi par mail ----------
-  function envoyerRecapitulatif() {
-    const liste = chargerEntrees();
-    if (liste.length === 0) return;
-
-    const aujourdhui = new Date().toLocaleDateString("fr-CH", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const sujet = `Récapitulatif des interventions — ${aujourdhui}`;
-
-    let corps = `Récapitulatif des interventions du ${aujourdhui}\n`;
-    corps += `${liste.length} entrée(s)\n`;
-    corps += "----------------------------------------\n\n";
-
-    liste.forEach((e, i) => {
-      corps += `${i + 1}. ${e.info}\n`;
-      corps += `   Créneau : ${formaterDateTexte(e.date)}${e.heure ? " de " + e.heure : ""}${e.heureFin ? " à " + e.heureFin : ""}\n`;
-      corps += `   Description : ${e.desc || "—"}\n\n`;
-    });
-
-    const lienMailto = `mailto:${EMAIL_DESTINATAIRE}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-    window.location.href = lienMailto;
-
-    document.getElementById("confirmation").classList.add("visible");
-  }
-
-  // ---------- Utilitaires ----------
-  function echapper(texte) {
-    const div = document.createElement("div");
-    div.textContent = texte || "";
-    return div.innerHTML;
-  }
-
-  function formaterDate(iso) {
-    if (!iso) return "—";
-    const [a, m, j] = iso.split("-");
-    return `${j}.${m}.${a}`;
-  }
-
-  function formaterDateTexte(iso) {
-    if (!iso) return "date non précisée";
-    const [a, m, j] = iso.split("-");
-    return `${j}.${m}.${a}`;
-  }
-
-  // ---------- Initialisation ----------
-  afficherListe();
-</script>
-
-</body>
-</html>
+    <div class="etape" data-etape=
